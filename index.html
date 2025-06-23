@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Conceptual Interactivo - Software y Servicios de Internet</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: auto;
+            user-select: none;
+        }
+        
+        .container {
+            width: 1600px;
+            height: 1000px;
+            margin: 0 auto;
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 18px 18px 0 0;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 1000;
+        }
+        
+        .controls h3 {
+            color: white;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .controls button {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            margin: 3px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .controls button:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .map-container {
+            position: relative;
+            width: 100%;
+            height: calc(100% - 80px);
+            overflow: hidden;
+        }
+        
+        /* SVG para líneas de conexión dinámicas */
+        .connections-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .connection-line {
+            stroke: rgba(255, 255, 255, 0.8);
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            transition: all 0.3s ease;
+        }
+        
+        .secondary-line {
+            stroke: rgba(255, 255, 255, 0.6);
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            transition: all 0.3s ease;
+        }
+        
+        .connection-text {
+            fill: white;
+            font-size: 12px;
+            font-weight: 500;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+        }
+        
+        /* Nodos arrastrables */
+        .draggable-node {
+            position: absolute;
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            z-index: 5;
+            cursor: move;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .draggable-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+        }
+        
+        .draggable-node.dragging {
+            transform: scale(1.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+        }
+        
+        /* Nodo Central */
+        .central-node {
+            width: 280px;
+            height: 140px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border-radius: 25px;
+            font-size: 20px;
+            font-weight: 700;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .central-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        /* Nodos Principales */
+        .main-node {
+            width: 220px;
+            height: 110px;
+            font-size: 16px;
+        }
+        
+        .node-sistemas {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            top: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .node-programacion {
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            top: 45%;
+            right: 8%;
+            transform: translateY(-50%);
+        }
+        
+        .node-aplicaciones {
+            background: linear-gradient(135deg, #fa709a, #fee140);
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .node-servicios {
+            background: linear-gradient(135deg, #a8edea, #fed6e3);
+            top: 45%;
+            left: 8%;
+            transform: translateY(-50%);
+            color: #333;
+        }
+        
+        /* Nodos Secundarios */
+        .secondary-node {
+            width: 180px;
+            height: 80px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px;
+            line-height: 1.2;
+        }
+        
+        /* Nodos de Software de Sistemas */
+        .sec-so { 
+            background: rgba(79, 172, 254, 0.85); 
+            top: 2%; 
+            left: 25%; 
+        }
+        .sec-drivers { 
+            background: rgba(79, 172, 254, 0.85); 
+            top: 2%; 
+            left: 55%; 
+        }
+        .sec-firmware { 
+            background: rgba(79, 172, 254, 0.85); 
+            top: 2%; 
+            right: 25%; 
+        }
+        
+        /* Nodos de Software de Programación */
+        .sec-compiladores { 
+            background: rgba(67, 233, 123, 0.85); 
+            top: 25%; 
+            right: 2%; 
+        }
+        .sec-ide { 
+            background: rgba(67, 233, 123, 0.85); 
+            top: 45%; 
+            right: 2%; 
+            transform: translateY(-50%);
+        }
+        .sec-debuggers { 
+            background: rgba(67, 233, 123, 0.85); 
+            top: 65%; 
+            right: 2%; 
+        }
+        
+        /* Nodos de Software de Aplicaciones */
+        .sec-oficina { 
+            background: rgba(250, 112, 154, 0.85); 
+            bottom: 2%; 
+            left: 25%; 
+        }
+        .sec-multimedia { 
+            background: rgba(250, 112, 154, 0.85); 
+            bottom: 2%; 
+            left: 55%; 
+        }
+        .sec-juegos { 
+            background: rgba(250, 112, 154, 0.85); 
+            bottom: 2%; 
+            right: 25%; 
+        }
+        
+        /* Nodos de Servicios de Internet */
+        .sec-email { 
+            background: rgba(168, 237, 234, 0.9); 
+            top: 25%; 
+            left: 2%; 
+            color: #333; 
+        }
+        .sec-web { 
+            background: rgba(168, 237, 234, 0.9); 
+            top: 45%; 
+            left: 2%; 
+            transform: translateY(-50%);
+            color: #333; 
+        }
+        .sec-cloud { 
+            background: rgba(168, 237, 234, 0.9); 
+            top: 65%; 
+            left: 2%; 
+            color: #333; 
+        }
+        
+        .node-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .main-node .node-icon {
+            font-size: 30px;
+            margin-bottom: 8px;
+        }
+        
+        /* Indicador de arrastre */
+        .drag-indicator {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .footer {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+        }
+        
+        /* Animaciones */
+        .draggable-node {
+            animation: fadeInScale 1.2s ease-out forwards;
+        }
+        
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .container {
+                width: 100%;
+                height: 800px;
+            }
+            
+            .central-node {
+                width: 240px;
+                height: 120px;
+                font-size: 18px;
+            }
+            
+            .main-node {
+                width: 180px;
+                height: 90px;
+                font-size: 14px;
+            }
+            
+            .secondary-node {
+                width: 150px;
+                height: 70px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>MAPA CONCEPTUAL INTERACTIVO - SOFTWARE Y SERVICIOS DE INTERNET</h1>
+            <p>GA1-220501046-AA1 | Arrastra los nodos para reorganizar el mapa</p>
+        </div>
+        
+        <div class="controls">
+            <h3>🎛️ Controles</h3>
+            <button onclick="resetPositions()">🔄 Resetear</button>
+            <button onclick="saveLayout()">💾 Guardar</button>
+            <button onclick="loadLayout()">📂 Cargar</button>
+            <button onclick="toggleLines()">🔗 Líneas</button>
+        </div>
+        
+        <div class="map-container" id="mapContainer">
+            <!-- SVG para líneas de conexión dinámicas -->
+            <svg class="connections-svg" id="connectionsSvg" viewBox="0 0 1600 920">
+                <!-- Las líneas se generarán dinámicamente -->
+            </svg>
+            
+            <!-- Nodo Central -->
+            <div class="draggable-node central-node" id="central" data-type="central">
+                <div class="central-icon">💻</div>
+                <div>SOFTWARE Y<br>SERVICIOS DE<br>INTERNET</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <!-- Nodos Principales -->
+            <div class="draggable-node main-node node-sistemas" id="sistemas" data-type="main" data-category="sistemas">
+                <div class="node-icon">⚙️</div>
+                <div>SOFTWARE DE<br>SISTEMAS</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node main-node node-programacion" id="programacion" data-type="main" data-category="programacion">
+                <div class="node-icon">🔧</div>
+                <div>SOFTWARE DE<br>PROGRAMACIÓN</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node main-node node-aplicaciones" id="aplicaciones" data-type="main" data-category="aplicaciones">
+                <div class="node-icon">📱</div>
+                <div>SOFTWARE DE<br>APLICACIONES</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node main-node node-servicios" id="servicios" data-type="main" data-category="servicios">
+                <div class="node-icon">🌐</div>
+                <div>SERVICIOS DE<br>INTERNET</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <!-- Nodos Secundarios - Software de Sistemas -->
+            <div class="draggable-node secondary-node sec-so" id="so" data-type="secondary" data-parent="sistemas">
+                <div>🖥️ <strong>Sistemas Operativos</strong><br>Windows, Linux, macOS</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-drivers" id="drivers" data-type="secondary" data-parent="sistemas">
+                <div>🔌 <strong>Controladores</strong><br>Drivers de hardware</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-firmware" id="firmware" data-type="secondary" data-parent="sistemas">
+                <div>⚡ <strong>Firmware</strong><br>BIOS, UEFI</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <!-- Nodos Secundarios - Software de Programación -->
+            <div class="draggable-node secondary-node sec-compiladores" id="compiladores" data-type="secondary" data-parent="programacion">
+                <div>📝 <strong>Compiladores</strong><br>GCC, Clang</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-ide" id="ide" data-type="secondary" data-parent="programacion">
+                <div>💻 <strong>Entornos IDE</strong><br>Visual Studio, Eclipse</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-debuggers" id="debuggers" data-type="secondary" data-parent="programacion">
+                <div>🐛 <strong>Depuradores</strong><br>GDB, Debuggers</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <!-- Nodos Secundarios - Software de Aplicaciones -->
+            <div class="draggable-node secondary-node sec-oficina" id="oficina" data-type="secondary" data-parent="aplicaciones">
+                <div>📊 <strong>Ofimática</strong><br>Office, LibreOffice</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-multimedia" id="multimedia" data-type="secondary" data-parent="aplicaciones">
+                <div>🎵 <strong>Multimedia</strong><br>Photoshop, VLC</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-juegos" id="juegos" data-type="secondary" data-parent="aplicaciones">
+                <div>🎮 <strong>Entretenimiento</strong><br>Juegos, Streaming</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <!-- Nodos Secundarios - Servicios de Internet -->
+            <div class="draggable-node secondary-node sec-email" id="email" data-type="secondary" data-parent="servicios">
+                <div>📧 <strong>Correo Electrónico</strong><br>Gmail, Outlook</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-web" id="web" data-type="secondary" data-parent="servicios">
+                <div>🌍 <strong>Navegación Web</strong><br>Chrome, Firefox</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+            
+            <div class="draggable-node secondary-node sec-cloud" id="cloud" data-type="secondary" data-parent="servicios">
+                <div>☁️ <strong>Almacenamiento</strong><br>Drive, Dropbox</div>
+                <div class="drag-indicator">⋮⋮</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            SENA - Mapa Conceptual Interactivo | Arrastra los nodos para personalizarlo
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let isDragging = false;
+        let currentElement = null;
+        let offset = { x: 0, y: 0 };
+        let showLines = true;
+        
+        // Inicializar funcionalidad de arrastre
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDragAndDrop();
+            updateConnections();
+        });
+        
+        function initializeDragAndDrop() {
+            const nodes = document.querySelectorAll('.draggable-node');
+            
+            nodes.forEach(node => {
+                node.addEventListener('mousedown', startDrag);
+                node.addEventListener('touchstart', startDrag);
+            });
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag);
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchend', stopDrag);
+        }
+        
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            currentElement = e.target.closest('.draggable-node');
+            currentElement.classList.add('dragging');
+            
+            const rect = currentElement.getBoundingClientRect();
+            const containerRect = document.getElementById('mapContainer').getBoundingClientRect();
+            
+            if (e.type === 'mousedown') {
+                offset.x = e.clientX - rect.left;
+                offset.y = e.clientY - rect.top;
+            } else {
+                offset.x = e.touches[0].clientX - rect.left;
+                offset.y = e.touches[0].clientY - rect.top;
+            }
+        }
+        
+        function drag(e) {
+            if (!isDragging || !currentElement) return;
+            
+            e.preventDefault();
+            const container = document.getElementById('mapContainer');
+            const containerRect = container.getBoundingClientRect();
+            
+            let clientX, clientY;
+            if (e.type === 'mousemove') {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            
+            const x = clientX - containerRect.left - offset.x;
+            const y = clientY - containerRect.top - offset.y;
+            
+            // Limitar dentro del contenedor
+            const maxX = container.offsetWidth - currentElement.offsetWidth;
+            const maxY = container.offsetHeight - currentElement.offsetHeight;
+            
+            const boundedX = Math.max(0, Math.min(x, maxX));
+            const boundedY = Math.max(0, Math.min(y, maxY));
+            
+            currentElement.style.left = boundedX + 'px';
+            currentElement.style.top = boundedY + 'px';
+            currentElement.style.transform = 'none';
+            
+            updateConnections();
+        }
+        
+        function stopDrag() {
+            if (currentElement) {
+                currentElement.classList.remove('dragging');
+            }
+            isDragging = false;
+            currentElement = null;
+        }
+        
+        function updateConnections() {
+            if (!showLines) return;
+            
+            const svg = document.getElementById('connectionsSvg');
+            svg.innerHTML = '';
+            
+            const central = document.getElementById('central');
+            const centralPos = getNodeCenter(central);
+            
+            // Conexiones principales
+            const mainNodes = ['sistemas', 'programacion', 'aplicaciones', 'servicios'];
+            const colors = {
+                sistemas: '#4facfe',
+                programacion: '#43e97b',
+                aplicaciones: '#fa709a',
+                servicios: '#a8edea'
+            };
+            
+            mainNodes.forEach(nodeId => {
+                const node = document.getElementById(nodeId);
+                const nodePos = getNodeCenter(node);
+                
+                // Línea principal
+                const line = createSVGLine(centralPos, nodePos, colors[nodeId], 3);
+                svg.appendChild(line);
+                
+                // Texto de relación
+                const midPoint = {
+                    x: (centralPos.x + nodePos.x) / 2,
+                    y: (centralPos.y + nodePos.y) / 2
+                };
+                
+                const text = createSVGText(midPoint, 'se clasifica en', 'connection-text');
+                svg.appendChild(text);
+                
+                // Conexiones secundarias
+                const secondaryNodes = document.querySelectorAll(`[data-parent="${nodeId}"]`);
+                secondaryNodes.forEach(secNode => {
+                    const secPos = getNodeCenter(secNode);
+                    const secLine = createSVGLine(nodePos, secPos, colors[nodeId], 2);
+                    svg.appendChild(secLine);
+                    
+                    const secMidPoint = {
+                        x: (nodePos.x + secPos.x) / 2,
+                        y: (nodePos.y + secPos.y) / 2
+                    };
+                    
+                    const secText = createSVGText(secMidPoint, 'incluye', 'connection-text');
+                    secText.style.fontSize = '10px';
+                    svg.appendChild(secText);
+                });
+            });
+        }
+        
+        function getNodeCenter(element) {
+            const rect = element.getBoundingClientRect();
+            const containerRect = document.getElementById('mapContainer').getBoundingClientRect();
+            
+            return {
+                x: rect.left - containerRect.left + rect.width / 2,
+                y: rect.top - containerRect.top + rect.height / 2
+            };
+        }
+        
+        function createSVGLine(start, end, color, width) {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            
+            // Crear línea curva
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const dr = Math.sqrt(dx * dx + dy * dy);
+            
+            const path = `M ${start.x} ${start.y} Q ${start.x + dx/2} ${start.y + dy/2 - 30} ${end.x} ${end.y}`;
+            
+            line.setAttribute('d', path);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', width);
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke-linecap', 'round');
+            
+            return line;
+        }
+        
+        function createSVGText(position, text, className) {
+            const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            textElement.setAttribute('x', position.x);
+            textElement.setAttribute('y', position.y);
+            textElement.setAttribute('class', className);
+            textElement.textContent = text;
+            return textElement;
+        }
+        
+        // Funciones de control
+        function resetPositions() {
+            const nodes = document.querySelectorAll('.draggable-node');
+            nodes.forEach(node => {
+                node.style.left = '';
+                node.style.top = '';
+                node.style.transform = '';
+            });
+            updateConnections();
+        }
+        
+        function saveLayout() {
+            const layout = {};
+            const nodes = document.querySelectorAll('.draggable-node');
+            
+            nodes.forEach(node => {
+                const rect = node.getBoundingClientRect();
+                const containerRect = document.getElementById('mapContainer').getBoundingClientRect();
+                
+                layout[node.id] = {
+                    x: rect.left - containerRect.left,
+                    y: rect.top - containerRect.top
+                };
+            });
+            
+            const dataStr = JSON.stringify(layout);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'mapa_conceptual_layout.json';
+            link.click();
+        }
+        
+        function loadLayout() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const layout = JSON.parse(e.target.result);
+                            applyLayout(layout);
+                        } catch (error) {
+                            alert('Error al cargar el archivo: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+        
+        function applyLayout(layout) {
+            Object.keys(layout).forEach(nodeId => {
+                const node = document.getElementById(nodeId);
+                if (node) {
+                    node.style.left = layout[nodeId].x + 'px';
+                    node.style.top = layout[nodeId].y + 'px';
+                    node.style.transform = 'none';
+                }
+            });
+            updateConnections();
+        }
+        
+        function toggleLines() {
+            showLines = !showLines;
+            const svg = document.getElementById('connectionsSvg');
+            svg.style.display = showLines ? 'block' : 'none';
+            if (showLines) {
+                updateConnections();
+            }
+        }
+        
+        // Actualizar conexiones cuando se redimensiona la ventana
+        window.addEventListener('resize', updateConnections);
+    </script>
+</body>
+</html>
